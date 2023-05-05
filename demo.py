@@ -13,7 +13,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 # from rapidocr_onnxruntime import RapidOCR
-from rapidocr_openvino_gpu import RapidOCR
+from rapidocr_openvinogpu import RapidOCR
 
 
 def draw_ocr_box_txt(image, boxes, txts, font_path,
