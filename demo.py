@@ -3,6 +3,7 @@
 # @Contact: liekkaskono@163.com
 from time import time 
 from glob import glob
+import argparse
 
 import math
 import random
@@ -15,99 +16,74 @@ from PIL import Image, ImageDraw, ImageFont
 # from rapidocr_onnxruntime import RapidOCR
 from rapidocr_openvinogpu import RapidOCR
 
-
-def draw_ocr_box_txt(image, boxes, txts, font_path,
-                     scores=None, text_score=0.5):
-    if not Path(font_path).exists():
-        raise FileNotFoundError(f'The {font_path} does not exists! \n'
-                                f'Please download the file in the https://drive.google.com/file/d/1evWVX38EFNwTq_n5gTFgnlv8tdaNcyIA/view?usp=sharing')
-
-    h, w = image.height, image.width
-    img_left = image.copy()
-    img_right = Image.new('RGB', (w, h), (255, 255, 255))
-
-    random.seed(0)
-    draw_left = ImageDraw.Draw(img_left)
-    draw_right = ImageDraw.Draw(img_right)
+def draw_inference(img_path, boxes, txts, scores=None, text_score=0.5):
+    img = cv2.imread(image_path)
+    img = cv2.resize(img, (960, 544))
     for idx, (box, txt) in enumerate(zip(boxes, txts)):
         if scores is not None and float(scores[idx]) < text_score:
             continue
+        is_closed = True
+        color = (0,255,0)
+        thickness = 2
+        pts = []
+        for i in range(0, len(box)):
+            pts.append([box[i][0], box[i][1]])
+        pts = np.array(pts, np.int32)
+        img = cv2.polylines(img, [pts], is_closed, color, thickness)
+        font_scale = 1.5
+        text_thickness = 2
+        text_org = (pts[0][0], pts[0][1])
+        img = cv2.putText(img, txt, text_org, cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, text_thickness, cv2.LINE_AA)
 
-        color = (random.randint(0, 255),
-                 random.randint(0, 255),
-                 random.randint(0, 255))
-        draw_left.polygon(box, fill=color)
-        draw_right.polygon([box[0][0], box[0][1],
-                            box[1][0], box[1][1],
-                            box[2][0], box[2][1],
-                            box[3][0], box[3][1]],
-                           outline=color)
-
-        box_height = math.sqrt((box[0][0] - box[3][0])**2
-                               + (box[0][1] - box[3][1])**2)
-
-        box_width = math.sqrt((box[0][0] - box[1][0])**2
-                              + (box[0][1] - box[1][1])**2)
-
-        if box_height > 2 * box_width:
-            font_size = max(int(box_width * 0.9), 10)
-            font = ImageFont.truetype(font_path, font_size,
-                                      encoding="utf-8")
-            cur_y = box[0][1]
-            for c in txt:
-                char_size = font.getsize(c)
-                draw_right.text((box[0][0] + 3, cur_y), c,
-                                fill=(0, 0, 0), font=font)
-                cur_y += char_size[1]
-        else:
-            font_size = max(int(box_height * 0.8), 10)
-            font = ImageFont.truetype(font_path, font_size, encoding="utf-8")
-            draw_right.text([box[0][0], box[0][1]], txt,
-                            fill=(0, 0, 0), font=font)
-
-    img_left = Image.blend(image, img_left, 0.5)
-    img_show = Image.new('RGB', (w * 2, h), (255, 255, 255))
-    img_show.paste(img_left, (0, 0, w, h))
-    img_show.paste(img_right, (w, 0, w * 2, h))
-    return np.array(img_show)
+    return img
 
 
-def visualize(image_path, result, font_path="resources/fonts/FZYTK.TTF"):
+def visualize(image_path, result):
     image = Image.open(image_path)
     boxes, txts, scores = list(zip(*result))
 
-    draw_img = draw_ocr_box_txt(image, np.array(boxes),
-                                txts, font_path,
-                                scores,
-                                text_score=0.5)
+    draw_img = draw_inference(image_path, boxes, txts, scores=None, text_score=0.5)
+
 
     draw_img_save = Path("./inference_results/")
     if not draw_img_save.exists():
         draw_img_save.mkdir(parents=True, exist_ok=True)
 
     image_save = str(draw_img_save / f'infer_{Path(image_path).name}')
-    cv2.imwrite(image_save, draw_img[:, :, ::-1])
+    cv2.imwrite(image_save, draw_img)
     print(f'The infer result has saved in {image_save}')
 
 
 if __name__ == '__main__':
+    # add argument parser
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-d', '--in-dir', required=False, help="Images directory")
+    parser.add_argument('-f', '--in-file', required=False, help="Image path")
+    parser.add_argument('-v', '--vis', required=False, action="store_true",
+                        help="visualization")
+    args = parser.parse_args()
+
     rapid_ocr = RapidOCR()
     
-    inp_dir = "/home/jk/Pictures/store_names/"
-    types = ('*.jpg', '*.jpeg', '*.png') # the tuple of file types
-    files_grabbed = []
+    all_image_files = []
 
-    for t in types:
-        files_grabbed.extend(glob(inp_dir+t))
+    if args.in_dir is not None:
+        inp_dir = args.in_dir
+        types = ('*.jpg', '*.jpeg', '*.png')
 
-    print(files_grabbed)
+        for t in types:
+            all_image_files.extend(glob(inp_dir+t))
+    elif args.in_file is not None:
+        all_image_files = [args.in_file]
+    else:
+        print("Input missing: either provide a folder (-d option) or a image path (-f)")
 
-    for image_path in files_grabbed:  
+    for image_path in all_image_files:  
         with open(image_path, 'rb') as f:
             img = f.read()
         result, elapse_list = rapid_ocr(img)
         print(result)
         print(elapse_list)
-
-        if result:
-            visualize(image_path, result, font_path='resources/fonts/FZYTK.TTF')
+        print(args.vis)
+        if args.vis:
+            visualize(image_path, result)
