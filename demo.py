@@ -13,7 +13,6 @@ import cv2
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-# from rapidocr_onnxruntime import RapidOCR
 from rapidocr_openvinogpu import RapidOCR
 
 def draw_inference(img_path, boxes, txts, scores=None, text_score=0.5):
@@ -38,14 +37,17 @@ def draw_inference(img_path, boxes, txts, scores=None, text_score=0.5):
     return img
 
 
-def visualize(image_path, result):
+def visualize(image_path, result, out_dir=None):
     image = Image.open(image_path)
     boxes, txts, scores = list(zip(*result))
 
     draw_img = draw_inference(image_path, boxes, txts, scores=None, text_score=0.5)
 
-
     draw_img_save = Path("./inference_results/")
+
+    if out_dir is not None:
+        draw_img_save = Path(out_dir)
+
     if not draw_img_save.exists():
         draw_img_save.mkdir(parents=True, exist_ok=True)
 
@@ -59,9 +61,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--in-dir', required=False, help="Images directory")
     parser.add_argument('-f', '--in-file', required=False, help="Image path")
+    parser.add_argument('-o', '--out-dir', required=False, help="Image path")
     parser.add_argument('-v', '--vis', required=False, action="store_true",
                         help="visualization")
     args = parser.parse_args()
+    out_dir = args.out_dir
 
     rapid_ocr = RapidOCR()
     
@@ -84,6 +88,5 @@ if __name__ == '__main__':
         result, elapse_list = rapid_ocr(img)
         print(result)
         print(elapse_list)
-        print(args.vis)
         if args.vis:
-            visualize(image_path, result)
+            visualize(image_path, result, out_dir)
