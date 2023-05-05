@@ -19,4 +19,7 @@ This is a modified verison of RapidOCR (https://github.com/RapidAI/RapidOCR) to 
 `python3 demo.py -f <absolute_path/to/image.jpg>`
 
 ### To save inference results, use `-v` flag:
-`python3 demo.py -d <absolute_path/to/directory> -v`
+`python3 demo.py -d <absolute_path/to/directory> -v` # this saves the visualization in "./inference_results/" in the current folder 
+
+### To save inference results in a desired folder, use `-v` and `-o` flag:
+`python3 demo.py -d <absolute_path/to/directory> -v -o <absolute_path/to/directory>`
