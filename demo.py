@@ -1,6 +1,3 @@
-# -*- encoding: utf-8 -*-
-# @Author: SWHL
-# @Contact: liekkaskono@163.com
 from time import time 
 from glob import glob
 import argparse
@@ -57,7 +54,6 @@ def visualize(image_path, result, out_dir=None):
 
 
 if __name__ == '__main__':
-    # add argument parser
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--in-dir', required=False, help="Images directory")
     parser.add_argument('-f', '--in-file', required=False, help="Image path")
